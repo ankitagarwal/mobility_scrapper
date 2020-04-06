@@ -107,20 +107,31 @@ class Scrapper:
         self.logger.info('Finished getting country list. Fount {} countries.'.format(len(df)))
         return df
 
-    def parsedocument(self, document):
+    def parsedocument(self, document, start_page=0, end_page=0):
         # convert all horizontal text into a lines list (one entry per line)
         # document is a file stream
         lines = []
+        p = 0
         rsrcmgr = PDFResourceManager()
         laparams = LAParams()
         device = PDFPageAggregator(rsrcmgr, laparams=laparams)
         interpreter = PDFPageInterpreter(rsrcmgr, device)
         for page in PDFPage.get_pages(document):
+            if p < start_page:
+                self.logger.info(f'Skipping page number {p}')
+                continue
+
+            self.logger.info(f'Parsing page number {p}')
             interpreter.process_page(page)
             layout = device.get_result()
             for element in layout:
                 if isinstance(element, LTTextBoxHorizontal):
                     lines.extend(element.get_text().splitlines())
+
+            if (end_page != 0) and (p == end_page):
+                self.logger.info(f'Reached page number {p}, stopping')
+                break
+            p += 1
         return lines
 
     def get_clean_number(self, text: str):
@@ -129,9 +140,8 @@ class Scrapper:
     def get_national_data(self, url):
         self.logger.info(f'Getting natinal data for {url}')
         self.scrape_content(url)
-        lines = self.parsedocument(self.open_file(self.url_to_file(url)))
+        lines = self.parsedocument(self.open_file(self.url_to_file(url)), 0, 1)
         data = [
-
             ['transit', self.get_clean_number(lines[56])],
             ['retail_recr', self.get_clean_number(lines[13])],
             ['grocery_pharm', self.get_clean_number(lines[16])],
@@ -142,7 +152,9 @@ class Scrapper:
         df = pd.DataFrame(data=data, columns=['entity', 'value'])
         df['country'], df['date'], df['country_name'] = self.get_date_country_cname(url)
         df['location'] = "COUNTRY OVERALL"
+        print(df)
         return df
 
 # Scrapper().get_county_list()
-Scrapper().get_national_data('https://www.gstatic.com/covid19/mobility/2020-03-29_AF_Mobility_Report_en.pdf')
+# Scrapper().get_national_data('https://www.gstatic.com/covid19/mobility/2020-03-29_AF_Mobility_Report_en.pdf')
+Scrapper().get_national_data('https://www.gstatic.com/covid19/mobility/2020-03-29_GB_Mobility_Report_en.pdf')
