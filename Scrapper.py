@@ -181,7 +181,7 @@ class Scrapper:
         if str(text).startswith('Not enough data for this date'):
             return np.nan
         text = str(text).replace("compared to baseline", "")
-        return float(text.replace('%', '').strip())/100
+        return float(text.replace('%', '').strip()) / 100
 
     def get_region_list(self, url="https://www.google.com/covid19/mobility/"):
         html = self.get_content(url)
@@ -225,14 +225,14 @@ class Scrapper:
         three_ent_2 = []
         for i in range(len(lines)):
             if lines[i].startswith('Retail'):
-                idx.append(i-1)
+                idx.append(i - 1)
             if lines[i].startswith('Parks'):
                 if lines[i + 1].startswith('*'):
                     three_ent_1.append([i + 2, i + 3, i + 4])
                 else:
                     three_ent_1.append([i + 1, i + 2, i + 3])
             if lines[i].startswith('Residential'):
-                if lines[i+1].startswith('*'):
+                if lines[i + 1].startswith('*'):
                     three_ent_2.append([i + 2, i + 3, i + 4])
                 else:
                     three_ent_2.append([i + 1, i + 2, i + 3])
@@ -242,13 +242,13 @@ class Scrapper:
         self.logger.info(f'Getting sub-natinal data for {url}')
         self.scrape_content(url)
         pages = self.parsedocument(self.open_file(self.url_to_file(url)), 2, 0, True)
-        pages.popitem() # Delete last page.
+        pages.popitem()  # Delete last page.
         nodes = []
         for n, lines in pages.items():
             [cities, three_ent_1, three_ent_2] = self.get_city_index(lines)
             if (len(cities) != 2) or \
-                (len(three_ent_1) != 2) or \
-                (len(three_ent_2) != 2):
+                    (len(three_ent_1) != 2) or \
+                    (len(three_ent_2) != 2):
                 self.logger.warning(f'Page number {n} is corrupt, skipping..')
             try:
                 node = []
@@ -294,8 +294,67 @@ class Scrapper:
         df['location'] = "REGION OVERALL"
         return df
 
+    def remove_astric(self, data_set):
+        result = []
+        for data in data_set:
+            if data.strip() != "*":
+                result.append(data)
+        return result
 
-# Scrapper().get_regional_data("https://www.gstatic.com/covid19/mobility/2020-03-29_US_Alabama_Mobility_Report_en.pdf")
+    def get_enity(self, entity):
+
+        entity_dict = {"Retail & recreation": "retail_recr",
+                       "Grocery & pharmacy": "grocery_pharm",
+                       "Parks": "parks",
+                       "Transit stations": "transit",
+                       "Workplace": "workplace",
+                       "Residential": "residential"}
+        if entity.strip(" ") in entity_dict.keys():
+            return entity_dict[entity.strip(" ")]
+
+    def clean_data_list(self, data_list):
+        result_list = []
+        for data in data_list:
+            data[1] = self.get_enity(data[1])
+            data[2] = self.get_clean_number(data[2])
+            result_list.append(data)
+        return result_list
+
+    def get_sub_regional_code(self, url):
+        global first_index, second_index
+        self.logger.info("getting sub_regiona;")
+        self.scrape_content(url)
+
+        lines = self.parsedocument(self.open_file(self.url_to_file(url)), 2, -2, True)
+        # main_df = pd.DataFrame(data=[], columns=['location', 'entity', 'value', 'date', 'country','region'])
+        nodes = []
+        for line in lines.keys():
+            data_list = []
+            first_index = [index for index, value in enumerate(lines[line]) if value.strip() == "Retail & recreation"]
+            second_index = [index for index, value in enumerate(lines[line]) if value.strip() == "Transit stations"]
+            for i in range(0, len(first_index)):
+                first_set = lines[line][first_index[i]:first_index[i] + 9]
+                first_set = self.remove_astric(first_set)
+                location = lines[line][first_index[i] - 1]
+                for j in range(0, 3):
+                    data_list.append([location, first_set[j], first_set[j + 3]])
+
+                second_set = lines[line][second_index[i]:second_index[i] + 9]
+                second_set = self.remove_astric(second_set)
+                for k in range(0, 3):
+                    data_list.append([location, second_set[k], second_set[k + 3]])
+            data_list = self.clean_data_list(data_list)
+            df = pd.DataFrame(data=data_list, columns=['location', 'entity', 'value'])
+            df['date'] = self.get_date_code_from_url(url)
+            df['country'] = self.get_country_code_from_url(url)
+            df['region'] = self.get_region_code_from_url(url)
+            print(df)
+            nodes.append(data_list)
+        # return main_df
+
+
+Scrapper().get_sub_regional_code(
+    "https://www.gstatic.com/covid19/mobility/2020-03-29_US_Alabama_Mobility_Report_en.pdf")
 
 # Scrapper().get_county_list()
 # Scrapper().get_national_data('https://www.gstatic.com/covid19/mobility/2020-03-29_AF_Mobility_Report_en.pdf')
