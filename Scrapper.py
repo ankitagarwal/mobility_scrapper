@@ -36,11 +36,15 @@ class Scrapper:
         try:
             if os.path.exists(self.path):
                 shutil.rmtree(self.path)
+                self.log(f'Removed folder {self.path}')
             os.mkdir(self.path)
+            self.log(f'Created folder {self.path}')
 
             if os.path.exists(self.output):
                 shutil.rmtree(self.output)
+                self.log(f'Removed folder {self.output}')
             os.mkdir(self.output)
+            self.log(f'Created folder {self.output}')
         except OSError as e:
             print("Error: %s : %s" % (self.path, e.strerror))
 
@@ -246,10 +250,12 @@ class Scrapper:
         nodes = []
         for n, lines in pages.items():
             [cities, three_ent_1, three_ent_2] = self.get_city_index(lines)
-            if (len(cities) != 2) or \
-                    (len(three_ent_1) != 2) or \
-                    (len(three_ent_2) != 2):
+            if ((len(cities) != len(three_ent_1)) or
+                    (len(three_ent_1) != len(three_ent_2)) or
+                    (len(three_ent_2) > 2) or
+                    (len(three_ent_2) < 1)):
                 self.logger.warning(f'Page number {n} is corrupt, skipping..')
+                continue
             try:
                 node = []
                 for i in range(len(cities)):
@@ -353,8 +359,8 @@ class Scrapper:
         # return main_df
 
 
-Scrapper().get_sub_regional_code(
-    "https://www.gstatic.com/covid19/mobility/2020-03-29_US_Alabama_Mobility_Report_en.pdf")
+# Scrapper().get_sub_regional_code(
+#     "https://www.gstatic.com/covid19/mobility/2020-03-29_US_Alabama_Mobility_Report_en.pdf")
 
 # Scrapper().get_county_list()
 # Scrapper().get_national_data('https://www.gstatic.com/covid19/mobility/2020-03-29_AF_Mobility_Report_en.pdf')
