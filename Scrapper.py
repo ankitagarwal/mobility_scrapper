@@ -6,8 +6,7 @@ import logging
 import re
 import urllib.request
 from bs4 import BeautifulSoup
-import types
-import PyPDF2
+import shutil
 
 from pdfminer.layout import LAParams
 from pdfminer.converter import PDFPageAggregator
@@ -29,15 +28,21 @@ class Scrapper:
         self.logger.setLevel(logging.DEBUG)
         self.logger.info("Logger created")
 
+    def store_output(self, df, file):
+        file = self.get_local_file(file, self.output)
+        df.to_csv(file, index=False)
+
     def start_clean(self):
         try:
-            os.rmdir(self.path)
+            shutil.rmtree(self.path)
             os.mkdir(self.path)
         except OSError as e:
             print("Error: %s : %s" % (self.path, e.strerror))
 
-    def get_local_file(self, file):
-        return os.path.join(self.path, file)
+    def get_local_file(self, file, path=None):
+        if path is None:
+            path = self.path
+        return os.path.join(path, file)
 
     def write_file(self, file, content):
         my_file = open(self.get_local_file(file), "wb")  # open file in write mode
@@ -53,6 +58,9 @@ class Scrapper:
     def open_file(self, file, mode='rb'):
         my_file = open(self.get_local_file(file), mode)
         return my_file
+
+    def log(self, msg):
+        self.logger.info(msg)
 
     def file_exists(self, file):
         file = self.get_local_file(file)
@@ -73,7 +81,7 @@ class Scrapper:
             return os.path.basename(url)
 
     def get_content(self, url):
-        content = self.scrape_content()
+        content = self.scrape_content(url)
         if content is None:
             return self.read_file(self.url_to_file(url))
         else:
@@ -121,7 +129,8 @@ class Scrapper:
         page = BeautifulSoup(html, 'lxml')
         links = [tag['href'] for tag in page.select("div.country-data > a.download-link")]
         df = pd.DataFrame(data=links, columns=['url'])
-        df['country'], df['date'], df['country_name'] = df.url.apply(self.get_date_country_cname)
+        # No idea why this double casting is required.
+        df[['country', 'date', 'country_name']] = pd.DataFrame(df.url.apply(self.get_date_country_cname).tolist())
         self.logger.info('Finished getting country list. Fount {} countries.'.format(len(df)))
         return df
 
@@ -298,4 +307,4 @@ class Scrapper:
 
 # Scrapper().get_county_list()
 # Scrapper().get_national_data('https://www.gstatic.com/covid19/mobility/2020-03-29_AF_Mobility_Report_en.pdf')
-Scrapper().get_sub_national_data('https://www.gstatic.com/covid19/mobility/2020-03-29_GB_Mobility_Report_en.pdf')
+# Scrapper().get_sub_national_data('https://www.gstatic.com/covid19/mobility/2020-03-29_GB_Mobility_Report_en.pdf')

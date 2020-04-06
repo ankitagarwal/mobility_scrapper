@@ -1,2 +1,4 @@
 .idea/
 dev-data
+output/*
+__pycache__/
