@@ -21,6 +21,7 @@ class Scrapper:
     DEV_MODE = True
     logger = None
     path = 'dev-data'
+    output = 'output'
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
@@ -246,13 +247,13 @@ class Scrapper:
                     ['residential', self.get_clean_number(lines[three_ent_2[0][2]])],
                 ]
                 node2 = [
-                        ['retail_recr', self.get_clean_number(lines[three_ent_1[1][0]])],
-                        ['grocery_pharm', self.get_clean_number(lines[three_ent_1[1][1]])],
-                        ['parks', self.get_clean_number(lines[three_ent_1[1][2]])],
-                        ['transit', self.get_clean_number(lines[three_ent_2[1][0]])],
-                        ['workplace', self.get_clean_number(lines[three_ent_2[1][1]])],
-                        ['residential', self.get_clean_number(lines[three_ent_2[1][2]])],
-                    ]
+                    ['retail_recr', self.get_clean_number(lines[three_ent_1[1][0]])],
+                    ['grocery_pharm', self.get_clean_number(lines[three_ent_1[1][1]])],
+                    ['parks', self.get_clean_number(lines[three_ent_1[1][2]])],
+                    ['transit', self.get_clean_number(lines[three_ent_2[1][0]])],
+                    ['workplace', self.get_clean_number(lines[three_ent_2[1][1]])],
+                    ['residential', self.get_clean_number(lines[three_ent_2[1][2]])],
+                ]
                 node = []
                 for l in node1:
                     # TODO - find a better way to do this.
@@ -263,6 +264,7 @@ class Scrapper:
                     # TODO - find a better way to do this.
                     l.extend([self.get_clean_location_name(lines[cities[1]])])
                     node.extend([l])
+                nodes.extend(node)
             except Exception as e:
                 self.logger.warning(f'Page number {n} is corrupt, skipping..')
                 self.logger.warning(e)
@@ -270,7 +272,6 @@ class Scrapper:
                 print(lines)
                 print(node1, node2, lines[three_ent_2[0][0]], lines[three_ent_2[1][0]])
             self.logger.info(f'Collected data from Page number {n}')
-            nodes.extend(node)
         df = pd.DataFrame(data=nodes, columns=['entity', 'value', 'location'])
         df['region'], df['date'], df['country'] = self.get_date_region_cname(url)
         print(df.head())
