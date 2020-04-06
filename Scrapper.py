@@ -127,64 +127,22 @@ class Scrapper:
         return int(text.replace('%', ''))
 
     def get_national_data(self, url):
+        self.logger.info(f'Getting natinal data for {url}')
         self.scrape_content(url)
-
         lines = self.parsedocument(self.open_file(self.url_to_file(url)))
-        print(len(lines))
-        print(lines[19])
         data = [
-            ['parks', self.get_clean_number(lines[19])]
+
+            ['transit', self.get_clean_number(lines[56])],
+            ['retail_recr', self.get_clean_number(lines[13])],
+            ['grocery_pharm', self.get_clean_number(lines[16])],
+            ['workplace', self.get_clean_number(lines[59])],
+            ['residential', self.get_clean_number(lines[62])]
         ]
-        print(data)
+        self.logger.info(f'Data found {data}')
         df = pd.DataFrame(data=data, columns=['entity', 'value'])
         df['country'], df['date'], df['country_name'] = self.get_date_country_cname(url)
         df['location'] = "COUNTRY OVERALL"
-        print(df.head())
+        return df
 
 # Scrapper().get_county_list()
 Scrapper().get_national_data('https://www.gstatic.com/covid19/mobility/2020-03-29_AF_Mobility_Report_en.pdf')
-# # function to get overall data from a country report
-# get_national_data < - function(url)
-# {
-#
-#     # get the report, subset to overall pages and and convert to a dataframe
-#     report_data < - pdftools:: pdf_data(url)
-# national_pages < - report_data[1:2]
-# national_data < - map_dfr(national_pages, bind_rows,.id = "page")
-#
-# # get the report file name extract the date and country
-# filename < - basename(url)
-#
-# date < - strsplit(filename, "_")[[1]][1]
-# country < - strsplit(filename, "_")[[1]][2]
-#
-# # extract the data at relevant y position
-# national_datapoints < - national_data % > %
-# filter(y == 369 | y == 486 | y == 603 |
-#        y == 62 | y == 179 | y == 296) % > %
-# mutate(
-#     entity=case_when(
-#         page == 1 & y == 369
-# ~ "retail_recr",
-# page == 1 & y == 486
-# ~ "grocery_pharm",
-# page == 1 & y == 603
-# ~ "parks",
-# page == 2 & y == 62
-# ~ "transit",
-# page == 2 & y == 179
-# ~ "workplace",
-# page == 2 & y == 296
-# ~ "residential",
-# TRUE
-# ~ NA_character_)) % > %
-# mutate(value= as.numeric(str_remove_all(text, "\\%")) / 100,
-#                  date = date,
-#                         country = country,
-#                                   location = "COUNTRY OVERALL") % > %
-# select(date, country, location, entity, value)
-#
-# # return data
-# return (national_datapoints)
-#
-# }
