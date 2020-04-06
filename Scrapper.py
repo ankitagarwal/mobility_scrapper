@@ -6,6 +6,15 @@ import logging
 import re
 import urllib.request
 from bs4 import BeautifulSoup
+import types
+import PyPDF2
+
+from pdfminer.layout import LAParams
+from pdfminer.converter import PDFPageAggregator
+from pdfminer.pdfinterp import PDFResourceManager
+from pdfminer.pdfinterp import PDFPageInterpreter
+from pdfminer.pdfpage import PDFPage
+from pdfminer.layout import LTTextBoxHorizontal
 
 
 class Scrapper:
@@ -83,21 +92,54 @@ class Scrapper:
         country = pyc.lookup(code)
         return country.name
 
+    def get_date_country_cname(self, url):
+        country = self.get_country_code_from_url(url)
+        date = self.get_date_code_from_url(url)
+        country_name = self.get_country_name_from_code(country)
+        return [country, date, country_name]
+
     def get_county_list(self, url: str = 'https://www.google.com/covid19/mobility/'):
         html = self.get_content(url)
         page = BeautifulSoup(html, 'lxml')
         links = [tag['href'] for tag in page.select("div.country-data > a.download-link")]
         df = pd.DataFrame(data=links, columns=['url'])
-        df['country'] = df.url.apply(self.get_country_code_from_url)
-        df['date'] = df.url.apply(self.get_date_code_from_url)
-        df['country_name'] = df.country.apply(self.get_country_name_from_code)
+        df['country'], df['date'], df['country_name'] = df.url.apply(self.get_date_country_cname)
         self.logger.info('Finished getting country list. Fount {} countries.'.format(len(df)))
         return df
 
+    def parsedocument(self, document):
+        # convert all horizontal text into a lines list (one entry per line)
+        # document is a file stream
+        lines = []
+        rsrcmgr = PDFResourceManager()
+        laparams = LAParams()
+        device = PDFPageAggregator(rsrcmgr, laparams=laparams)
+        interpreter = PDFPageInterpreter(rsrcmgr, device)
+        for page in PDFPage.get_pages(document):
+            interpreter.process_page(page)
+            layout = device.get_result()
+            for element in layout:
+                if isinstance(element, LTTextBoxHorizontal):
+                    lines.extend(element.get_text().splitlines())
+        return lines
+
+    def get_clean_number(self, text: str):
+        return int(text.replace('%', ''))
+
     def get_national_data(self, url):
         self.scrape_content(url)
-        pdf_r = PdfR(self.open_file(self.url_to_file(url)))
-        print(pdf_r)
+
+        lines = self.parsedocument(self.open_file(self.url_to_file(url)))
+        print(len(lines))
+        print(lines[19])
+        data = [
+            ['parks', self.get_clean_number(lines[19])]
+        ]
+        print(data)
+        df = pd.DataFrame(data=data, columns=['entity', 'value'])
+        df['country'], df['date'], df['country_name'] = self.get_date_country_cname(url)
+        df['location'] = "COUNTRY OVERALL"
+        print(df.head())
 
 # Scrapper().get_county_list()
 Scrapper().get_national_data('https://www.gstatic.com/covid19/mobility/2020-03-29_AF_Mobility_Report_en.pdf')
