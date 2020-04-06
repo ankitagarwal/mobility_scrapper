@@ -1,5 +1,8 @@
 import os
+import pandas as pd
+from pycountry import countries as pyc
 import logging
+import re
 import urllib.request
 from bs4 import BeautifulSoup
 
@@ -55,34 +58,25 @@ class Scrapper:
                 self.write_file(file, html)
                 return html
 
+    def get_country_code_from_url(self, url):
+        return re.split(". |_", os.path.basename(url))[1]
+
+    def get_date_code_from_url(self, url):
+        return re.split(". |_", os.path.basename(url))[0]
+
+    def get_country_name_from_code(self, code):
+        country = pyc.lookup(code)
+        return country.name
+
     def get_county_list(self, url: str = 'https://www.google.com/covid19/mobility/'):
         html = self.get_content(url)
         page = BeautifulSoup(html, 'lxml')
         links = [tag['href'] for tag in page.select("div.country-data > a.download-link")]
-        print(links)
-Scrapper().get_county_list()
+        df = pd.DataFrame(data=links, columns=['url'])
+        df['country'] = df.url.apply(self.get_country_code_from_url)
+        df['date'] = df.url.apply(self.get_date_code_from_url)
+        df['country_name'] = df.country.apply(self.get_country_name_from_code)
+        self.logger.info('Finished getting country list. Fount {} countries.'.format(len(df)))
+        return df
 
-# get_country_list < - function(url="https://www.google.com/covid19/mobility/")
-# {
-#
-#     # get webpage
-#     page < - xml2:: read_html(url)
-#
-# # extract country urls
-# country_urls < - rvest::html_nodes(page, "div.country-data > a.download-link") % > %
-# rvest::html_attr("href")
-#
-# # create tibble from URL
-# countries < - tibble(url=country_urls) % > %
-# mutate(filename=basename(url),
-#        date=map_chr(filename, ~strsplit(., "_")[[1]][1]),
-# country = map_chr(filename, ~strsplit(., "_")[[1]][2]),
-# country_name = countrycode::countrycode(country,
-#                                         "iso2c",
-#                                         "country.name")) % > %
-# select(country, country_name, date, url)
-#
-# # return data
-# return (countries)
-#
-# }
+Scrapper().get_county_list()
