@@ -1,6 +1,6 @@
 import os
 import pandas as pd
-from PyPDF2 import PdfFileReader as PdfR
+import numpy as np
 from pycountry import countries as pyc
 import logging
 import re
@@ -20,6 +20,7 @@ from pdfminer.layout import LTTextBoxHorizontal
 class Scrapper:
     DEV_MODE = True
     logger = None
+    path = 'dev-data'
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
@@ -27,8 +28,15 @@ class Scrapper:
         self.logger.setLevel(logging.DEBUG)
         self.logger.info("Logger created")
 
+    def start_clean(self):
+        try:
+            os.rmdir(self.path)
+            os.mkdir(self.path)
+        except OSError as e:
+            print("Error: %s : %s" % (self.path, e.strerror))
+
     def get_local_file(self, file):
-        return os.path.join("dev-data", file)
+        return os.path.join(self.path, file)
 
     def write_file(self, file, content):
         my_file = open(self.get_local_file(file), "wb")  # open file in write mode
@@ -107,7 +115,6 @@ class Scrapper:
         country_code = self.get_country_code_from_url(url)
         return [region, date, country_code]
 
-
     def get_county_list(self, url: str = 'https://www.google.com/covid19/mobility/'):
         html = self.get_content(url)
         page = BeautifulSoup(html, 'lxml')
@@ -123,10 +130,12 @@ class Scrapper:
         lines = []
         dict = {}
         p = 0
+
         rsrcmgr = PDFResourceManager()
         laparams = LAParams()
         device = PDFPageAggregator(rsrcmgr, laparams=laparams)
         interpreter = PDFPageInterpreter(rsrcmgr, device)
+
         for page in PDFPage.get_pages(document):
             if p < start_page:
                 self.logger.info(f'Skipping page number {p}')
@@ -154,7 +163,8 @@ class Scrapper:
             return lines
 
     def get_clean_number(self, text: str):
-        print(text)
+        if str(text).startswith('Not enough data for this date'):
+            return np.nan
         text = str(text).replace("compared to baseline", "")
         return float(text.replace('%', '').strip())/100
 
@@ -203,15 +213,22 @@ class Scrapper:
             if lines[i].startswith('Retail'):
                 idx.append(i-1)
             if lines[i].startswith('Parks'):
-                three_ent_1.append([i + 1, i + 2, i + 3])
+                if lines[i + 1].startswith('*'):
+                    three_ent_1.append([i + 2, i + 3, i + 4])
+                else:
+                    three_ent_1.append([i + 1, i + 2, i + 3])
             if lines[i].startswith('Residential'):
-                three_ent_2.append([i + 1, i + 2, i + 3])
+                if lines[i+1].startswith('*'):
+                    three_ent_2.append([i + 2, i + 3, i + 4])
+                else:
+                    three_ent_2.append([i + 1, i + 2, i + 3])
         return [idx, three_ent_1, three_ent_2]
 
     def get_sub_national_data(self, url):
         self.logger.info(f'Getting sub-natinal data for {url}')
         self.scrape_content(url)
-        pages = self.parsedocument(self.open_file(self.url_to_file(url)), 2, 6, True)
+        pages = self.parsedocument(self.open_file(self.url_to_file(url)), 2, 0, True)
+        pages.popitem() # Delete last page.
         nodes = []
         for n, lines in pages.items():
             [cities, three_ent_1, three_ent_2] = self.get_city_index(lines)
@@ -219,31 +236,39 @@ class Scrapper:
                 (len(three_ent_1) != 2) or \
                 (len(three_ent_2) != 2):
                 self.logger.warning(f'Page number {n} is corrupt, skipping..')
-            # print(first, second, second + 36)
-            # node = [
-            #     self.get_clean_location_name(lines[first]), [
-            #         ['retail_recr', self.get_clean_number(lines[first + 4])],
-            #         ['grocery_pharm', self.get_clean_number(lines[first + 5])],
-            #         ['parks', self.get_clean_number(lines[first + 6])],
-            #         ['transit', self.get_clean_number(lines[first + 34])],
-            #         ['workplace', self.get_clean_number(lines[first + 35])],
-            #         ['residential', self.get_clean_number(lines[first + 36])],
-            #     ],
-            #     self.get_clean_location_name(lines[second]), [
-            #         ['retail_recr', self.get_clean_number(lines[second + 4])],
-            #         ['grocery_pharm', self.get_clean_number(lines[second + 5])],
-            #         ['parks', self.get_clean_number(lines[second + 6])],
-            #         ['transit', self.get_clean_number(lines[second + 34])],
-            #         ['workplace', self.get_clean_number(lines[second + 35])],
-            #         ['residential', self.get_clean_number(lines[second + 36])],
-            #     ]
-            # ]
-            # print(node)
-            # nodes.append(node)
+            try:
+                node1 = [
+                    ['retail_recr', self.get_clean_number(lines[three_ent_1[0][0]])],
+                    ['grocery_pharm', self.get_clean_number(lines[three_ent_1[0][1]])],
+                    ['parks', self.get_clean_number(lines[three_ent_1[0][2]])],
+                    ['transit', self.get_clean_number(lines[three_ent_2[0][0]])],
+                    ['workplace', self.get_clean_number(lines[three_ent_2[0][1]])],
+                    ['residential', self.get_clean_number(lines[three_ent_2[0][2]])],
+                ]
+                node2 = [
+                        ['retail_recr', self.get_clean_number(lines[three_ent_1[1][0]])],
+                        ['grocery_pharm', self.get_clean_number(lines[three_ent_1[1][1]])],
+                        ['parks', self.get_clean_number(lines[three_ent_1[1][2]])],
+                        ['transit', self.get_clean_number(lines[three_ent_2[1][0]])],
+                        ['workplace', self.get_clean_number(lines[three_ent_2[1][1]])],
+                        ['residential', self.get_clean_number(lines[three_ent_2[1][2]])],
+                    ]
+                node = [
+                    [self.get_clean_location_name(lines[cities[0]]), node1],
+                    [self.get_clean_location_name(lines[cities[1]]), node2],
+                ]
+            except Exception as e:
+                self.logger.warning(f'Page number {n} is corrupt, skipping..')
+                self.logger.warning(e)
+                print(len(lines), cities, three_ent_1, three_ent_2)
+                print(lines)
+                print(node1, node2, lines[three_ent_2[0][0]], lines[three_ent_2[1][0]])
+            self.logger.info(f'Collected data from Page number {n}')
+            nodes.extend(node)
+        print(nodes)
 
     def get_regional_data(self, url):
         self.scrape_content(url)
-
         lines = self.parsedocument(self.open_file(self.url_to_file(url)))
         data = [
             ['retail_recr', self.get_clean_number(lines[13])],
@@ -259,52 +284,8 @@ class Scrapper:
         return df
 
 
-Scrapper().get_regional_data("https://www.gstatic.com/covid19/mobility/2020-03-29_US_Alabama_Mobility_Report_en.pdf")
+# Scrapper().get_regional_data("https://www.gstatic.com/covid19/mobility/2020-03-29_US_Alabama_Mobility_Report_en.pdf")
 
 # Scrapper().get_county_list()
 # Scrapper().get_national_data('https://www.gstatic.com/covid19/mobility/2020-03-29_AF_Mobility_Report_en.pdf')
 Scrapper().get_sub_national_data('https://www.gstatic.com/covid19/mobility/2020-03-29_GB_Mobility_Report_en.pdf')
-# # function to get overall data from a country report
-# get_national_data < - function(url)
-# {
-#
-#     # get the report, subset to overall pages and and convert to a dataframe
-#     report_data < - pdftools:: pdf_data(url)
-# national_pages < - report_data[1:2]
-# national_data < - map_dfr(national_pages, bind_rows,.id = "page")
-#
-# # get the report file name extract the date and country
-# filename < - basename(url)
-#
-# date < - strsplit(filename, "_")[[1]][1]
-# country < - strsplit(filename, "_")[[1]][2]
-#
-# # extract the data at relevant y position
-# national_datapoints < - national_data % > %
-# filter(y == 369 | y == 486 | y == 603 |
-#        y == 62 | y == 179 | y == 296) % > %
-# mutate(
-#     entity=case_when(
-#         page == 1 & y == 369
-# ~ "retail_recr",
-# page == 1 & y == 486
-# ~ "grocery_pharm",
-# page == 1 & y == 603
-# ~ "parks",
-# page == 2 & y == 62
-# ~ "transit",
-# page == 2 & y == 179
-# ~ "workplace",
-# page == 2 & y == 296
-# ~ "residential",
-# TRUE
-# ~ NA_character_)) % > %
-# mutate(value= as.numeric(str_remove_all(text, "\\%")) / 100,
-#                  date = date,
-#                         country = country,
-#                                   location = "COUNTRY OVERALL") % > %
-# select(date, country, location, entity, value)
-#
-# # return data
-# return (national_datapoints)
-#
