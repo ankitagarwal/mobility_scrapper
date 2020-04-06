@@ -31,8 +31,10 @@ class Scrapper:
     def file_exists(self, file):
         file = self.get_local_file(file)
         if os.path.exists(file) and os.path.isfile(file):
+            self.logger.info(f'File exists {file}')
             return True
         else:
+            self.logger.info(f'File doesn\'t exist {file}')
             return False
 
     def url_to_file(self, url):
@@ -55,10 +57,9 @@ class Scrapper:
 
     def get_county_list(self, url: str = 'https://www.google.com/covid19/mobility/'):
         html = self.get_content(url)
-        # page = BeautifulSoup(html, 'html-parser')
-        # print(page)
-        # print(page.find_all("div.country-data > a.download-link"))
-
+        page = BeautifulSoup(html, 'lxml')
+        links = [tag['href'] for tag in page.select("div.country-data > a.download-link")]
+        print(links)
 Scrapper().get_county_list()
 
 # get_country_list < - function(url="https://www.google.com/covid19/mobility/")
