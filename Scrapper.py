@@ -41,7 +41,7 @@ class Scrapper:
         my_file.close()  # close file
         return content
 
-    def open_file(self, file, mode= 'rb'):
+    def open_file(self, file, mode='rb'):
         my_file = open(self.get_local_file(file), mode)
         return my_file
 
@@ -100,6 +100,13 @@ class Scrapper:
         date = self.get_date_code_from_url(url)
         country_name = self.get_country_name_from_code(country)
         return [country, date, country_name]
+
+    def get_date_region_cname(self, url):
+        region = self.get_region_code_from_url(url)
+        date = self.get_date_code_from_url(url)
+        country_code = self.get_country_code_from_url(url)
+        return [region, date, country_code]
+
 
     def get_county_list(self, url: str = 'https://www.google.com/covid19/mobility/'):
         html = self.get_content(url)
@@ -205,6 +212,25 @@ class Scrapper:
             print(node)
             exit()
 
+    def get_regional_data(self, url):
+        self.scrape_content(url)
+
+        lines = self.parsedocument(self.open_file(self.url_to_file(url)))
+        data = [
+            ['retail_recr', self.get_clean_number(lines[13])],
+            ['grocery_pharm', self.get_clean_number(lines[16])],
+            ['parks', self.get_clean_number(lines[19])],
+            ['workplace', self.get_clean_number(lines[22])],
+            ['residential', self.get_clean_number(lines[25])]
+        ]
+        df = pd.DataFrame(data=data, columns=['entity', 'value'])
+        df['region'], df['date'], df['country'] = self.get_date_region_cname(url)
+        df['location'] = "REGION OVERALL"
+        print(df.head())
+
+
+Scrapper().get_regional_data("https://www.gstatic.com/covid19/mobility/2020-03-29_US_Alabama_Mobility_Report_en.pdf")
+
 # Scrapper().get_county_list()
 # Scrapper().get_national_data('https://www.gstatic.com/covid19/mobility/2020-03-29_AF_Mobility_Report_en.pdf')
 Scrapper().get_sub_national_data('https://www.gstatic.com/covid19/mobility/2020-03-29_GB_Mobility_Report_en.pdf')
@@ -252,4 +278,3 @@ Scrapper().get_sub_national_data('https://www.gstatic.com/covid19/mobility/2020-
 # # return data
 # return (national_datapoints)
 #
-# }
