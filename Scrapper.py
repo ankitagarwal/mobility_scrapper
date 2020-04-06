@@ -135,7 +135,7 @@ class Scrapper:
         return lines
 
     def get_clean_number(self, text: str):
-        return int(text.replace('%', ''))
+        return float(text.replace('%', ''))/100
 
     def get_national_data(self, url):
         self.logger.info(f'Getting natinal data for {url}')
