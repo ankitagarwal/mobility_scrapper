@@ -1,9 +1,9 @@
 from Scrapper import Scrapper
 
-countries_to_scrape = ['GB']
+countries_to_scrape = ['GB', 'US']
 
 sc = Scrapper()
-# sc.start_clean()
+sc.start_clean()
 countries = sc.get_county_list()
 sc.store_output(countries, 'countries-list.csv')
 sc.log(f'Output saved - countries-list.csv')

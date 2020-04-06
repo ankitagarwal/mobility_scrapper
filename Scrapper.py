@@ -36,6 +36,8 @@ class Scrapper:
         try:
             shutil.rmtree(self.path)
             os.mkdir(self.path)
+            shutil.rmtree(self.output)
+            os.mkdir(self.output)
         except OSError as e:
             print("Error: %s : %s" % (self.path, e.strerror))
 
@@ -246,32 +248,20 @@ class Scrapper:
                 (len(three_ent_2) != 2):
                 self.logger.warning(f'Page number {n} is corrupt, skipping..')
             try:
-                node1 = [
-                    ['retail_recr', self.get_clean_number(lines[three_ent_1[0][0]])],
-                    ['grocery_pharm', self.get_clean_number(lines[three_ent_1[0][1]])],
-                    ['parks', self.get_clean_number(lines[three_ent_1[0][2]])],
-                    ['transit', self.get_clean_number(lines[three_ent_2[0][0]])],
-                    ['workplace', self.get_clean_number(lines[three_ent_2[0][1]])],
-                    ['residential', self.get_clean_number(lines[three_ent_2[0][2]])],
-                ]
-                node2 = [
-                    ['retail_recr', self.get_clean_number(lines[three_ent_1[1][0]])],
-                    ['grocery_pharm', self.get_clean_number(lines[three_ent_1[1][1]])],
-                    ['parks', self.get_clean_number(lines[three_ent_1[1][2]])],
-                    ['transit', self.get_clean_number(lines[three_ent_2[1][0]])],
-                    ['workplace', self.get_clean_number(lines[three_ent_2[1][1]])],
-                    ['residential', self.get_clean_number(lines[three_ent_2[1][2]])],
-                ]
                 node = []
-                for l in node1:
-                    # TODO - find a better way to do this.
-                    l.extend([self.get_clean_location_name(lines[cities[0]])])
-                    node.extend([l])
-
-                for l in node2:
-                    # TODO - find a better way to do this.
-                    l.extend([self.get_clean_location_name(lines[cities[1]])])
-                    node.extend([l])
+                for i in range(len(cities)):
+                    cur_node = [
+                        ['retail_recr', self.get_clean_number(lines[three_ent_1[i][0]])],
+                        ['grocery_pharm', self.get_clean_number(lines[three_ent_1[i][1]])],
+                        ['parks', self.get_clean_number(lines[three_ent_1[i][2]])],
+                        ['transit', self.get_clean_number(lines[three_ent_2[i][0]])],
+                        ['workplace', self.get_clean_number(lines[three_ent_2[i][1]])],
+                        ['residential', self.get_clean_number(lines[three_ent_2[i][2]])],
+                    ]
+                    for l in cur_node:
+                        # TODO - find a better way to do this.
+                        l.extend([self.get_clean_location_name(lines[cities[i]])])
+                        node.extend([l])
                 nodes.extend(node)
             except Exception as e:
                 self.logger.warning(f'Page number {n} is corrupt, skipping..')
