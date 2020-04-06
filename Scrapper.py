@@ -271,7 +271,7 @@ class Scrapper:
                 self.logger.warning(e)
                 print(len(lines), cities, three_ent_1, three_ent_2)
                 print(lines)
-                print(node1, node2, lines[three_ent_2[0][0]], lines[three_ent_2[1][0]])
+                print(node)
             self.logger.info(f'Collected data from Page number {n}')
         df = pd.DataFrame(data=nodes, columns=['entity', 'value', 'location'])
         df['country'], df['date'], df['country_name'] = self.get_date_country_cname(url)
