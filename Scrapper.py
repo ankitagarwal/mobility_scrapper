@@ -107,10 +107,11 @@ class Scrapper:
         self.logger.info('Finished getting country list. Fount {} countries.'.format(len(df)))
         return df
 
-    def parsedocument(self, document, start_page=0, end_page=0):
+    def parsedocument(self, document, start_page=0, end_page=0, return_page=False):
         # convert all horizontal text into a lines list (one entry per line)
         # document is a file stream
         lines = []
+        dict = {}
         p = 0
         rsrcmgr = PDFResourceManager()
         laparams = LAParams()
@@ -119,23 +120,33 @@ class Scrapper:
         for page in PDFPage.get_pages(document):
             if p < start_page:
                 self.logger.info(f'Skipping page number {p}')
+                p += 1
                 continue
 
             self.logger.info(f'Parsing page number {p}')
             interpreter.process_page(page)
             layout = device.get_result()
+            l = []
             for element in layout:
                 if isinstance(element, LTTextBoxHorizontal):
-                    lines.extend(element.get_text().splitlines())
+                    l.extend(element.get_text().splitlines())
+            lines.extend(l)
+            dict[p] = l
 
             if (end_page != 0) and (p == end_page):
                 self.logger.info(f'Reached page number {p}, stopping')
                 break
             p += 1
-        return lines
+
+        if return_page:
+            return dict
+        else:
+            return lines
 
     def get_clean_number(self, text: str):
-        return float(text.replace('%', ''))/100
+        print(text)
+        text = text.replace("compared to baseline", "")
+        return float(text.replace('%', '').strip())/100
 
     def get_national_data(self, url):
         self.logger.info(f'Getting natinal data for {url}')
@@ -155,6 +166,31 @@ class Scrapper:
         print(df)
         return df
 
+    def get_clean_location_name(self, location: str):
+        location = location.replace("^c\\(\"", "")
+        location = location.replace("\", \"", " ")
+        location = location.replace("\"\\)", " ")
+        location = location.replace("And", "and")
+        return location
+
+
+    def get_sub_national_data(self, url):
+        self.logger.info(f'Getting sub-natinal data for {url}')
+        self.scrape_content(url)
+        pages = self.parsedocument(self.open_file(self.url_to_file(url)), 2, 5, True)
+        data = []
+        for n, lines in pages.items():
+            print(lines)
+            node = [
+                self.get_clean_location_name(lines[0]), [
+                    ['retail_recr', self.get_clean_number(lines[4])],
+                    ['grocery_pharm', self.get_clean_number(lines[5])],
+                    ['parks', self.get_clean_number(lines[6])],
+                ]
+            ]
+            print(node)
+            exit()
+
 # Scrapper().get_county_list()
 # Scrapper().get_national_data('https://www.gstatic.com/covid19/mobility/2020-03-29_AF_Mobility_Report_en.pdf')
-Scrapper().get_national_data('https://www.gstatic.com/covid19/mobility/2020-03-29_GB_Mobility_Report_en.pdf')
+Scrapper().get_sub_national_data('https://www.gstatic.com/covid19/mobility/2020-03-29_GB_Mobility_Report_en.pdf')
