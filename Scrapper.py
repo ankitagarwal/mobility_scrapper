@@ -155,7 +155,7 @@ class Scrapper:
 
     def get_clean_number(self, text: str):
         print(text)
-        text = text.replace("compared to baseline", "")
+        text = str(text).replace("compared to baseline", "")
         return float(text.replace('%', '').strip())/100
 
     def get_region_list(self, url="https://www.google.com/covid19/mobility/"):
@@ -173,6 +173,7 @@ class Scrapper:
         self.logger.info(f'Getting natinal data for {url}')
         self.scrape_content(url)
         lines = self.parsedocument(self.open_file(self.url_to_file(url)), 0, 1)
+        # TODO missing.
         data = [
             ['transit', self.get_clean_number(lines[56])],
             ['retail_recr', self.get_clean_number(lines[13])],
@@ -194,23 +195,51 @@ class Scrapper:
         location = location.replace("And", "and")
         return location
 
+    def get_city_index(self, lines: [str]):
+        idx = []
+        three_ent_1 = []
+        three_ent_2 = []
+        for i in range(len(lines)):
+            if lines[i].startswith('Retail'):
+                idx.append(i-1)
+            if lines[i].startswith('Parks'):
+                three_ent_1.append([i + 1, i + 2, i + 3])
+            if lines[i].startswith('Residential'):
+                three_ent_2.append([i + 1, i + 2, i + 3])
+        return [idx, three_ent_1, three_ent_2]
 
     def get_sub_national_data(self, url):
         self.logger.info(f'Getting sub-natinal data for {url}')
         self.scrape_content(url)
-        pages = self.parsedocument(self.open_file(self.url_to_file(url)), 2, 5, True)
-        data = []
+        pages = self.parsedocument(self.open_file(self.url_to_file(url)), 2, 6, True)
+        nodes = []
         for n, lines in pages.items():
-            print(lines)
-            node = [
-                self.get_clean_location_name(lines[0]), [
-                    ['retail_recr', self.get_clean_number(lines[4])],
-                    ['grocery_pharm', self.get_clean_number(lines[5])],
-                    ['parks', self.get_clean_number(lines[6])],
-                ]
-            ]
-            print(node)
-            exit()
+            [cities, three_ent_1, three_ent_2] = self.get_city_index(lines)
+            if (len(cities) != 2) or \
+                (len(three_ent_1) != 2) or \
+                (len(three_ent_2) != 2):
+                self.logger.warning(f'Page number {n} is corrupt, skipping..')
+            # print(first, second, second + 36)
+            # node = [
+            #     self.get_clean_location_name(lines[first]), [
+            #         ['retail_recr', self.get_clean_number(lines[first + 4])],
+            #         ['grocery_pharm', self.get_clean_number(lines[first + 5])],
+            #         ['parks', self.get_clean_number(lines[first + 6])],
+            #         ['transit', self.get_clean_number(lines[first + 34])],
+            #         ['workplace', self.get_clean_number(lines[first + 35])],
+            #         ['residential', self.get_clean_number(lines[first + 36])],
+            #     ],
+            #     self.get_clean_location_name(lines[second]), [
+            #         ['retail_recr', self.get_clean_number(lines[second + 4])],
+            #         ['grocery_pharm', self.get_clean_number(lines[second + 5])],
+            #         ['parks', self.get_clean_number(lines[second + 6])],
+            #         ['transit', self.get_clean_number(lines[second + 34])],
+            #         ['workplace', self.get_clean_number(lines[second + 35])],
+            #         ['residential', self.get_clean_number(lines[second + 36])],
+            #     ]
+            # ]
+            # print(node)
+            # nodes.append(node)
 
     def get_regional_data(self, url):
         self.scrape_content(url)
