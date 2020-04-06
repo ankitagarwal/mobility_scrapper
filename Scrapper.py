@@ -201,11 +201,10 @@ class Scrapper:
             ['workplace', self.get_clean_number(lines[59])],
             ['residential', self.get_clean_number(lines[62])]
         ]
-        self.logger.info(f'Data found {data}')
         df = pd.DataFrame(data=data, columns=['entity', 'value'])
         df['country'], df['date'], df['country_name'] = self.get_date_country_cname(url)
         df['location'] = "COUNTRY OVERALL"
-        print(df)
+        self.logger.info(f'National data found of size - {len(df)}')
         return df
 
     def get_clean_location_name(self, location: str):
@@ -282,8 +281,8 @@ class Scrapper:
                 print(node1, node2, lines[three_ent_2[0][0]], lines[three_ent_2[1][0]])
             self.logger.info(f'Collected data from Page number {n}')
         df = pd.DataFrame(data=nodes, columns=['entity', 'value', 'location'])
-        df['region'], df['date'], df['country'] = self.get_date_region_cname(url)
-        print(df.head())
+        df['country'], df['date'], df['country_name'] = self.get_date_country_cname(url)
+        self.logger.info(f'Sub National data found of size - {len(df)}')
         return df
 
     def get_regional_data(self, url):
