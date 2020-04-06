@@ -183,11 +183,11 @@ class Scrapper:
         self.logger.info(f'Getting natinal data for {url}')
         self.scrape_content(url)
         lines = self.parsedocument(self.open_file(self.url_to_file(url)), 0, 1)
-        # TODO missing.
         data = [
-            ['transit', self.get_clean_number(lines[56])],
             ['retail_recr', self.get_clean_number(lines[13])],
             ['grocery_pharm', self.get_clean_number(lines[16])],
+            ['parks', self.get_clean_number(lines[19])],
+            ['transit', self.get_clean_number(lines[56])],
             ['workplace', self.get_clean_number(lines[59])],
             ['residential', self.get_clean_number(lines[62])]
         ]
@@ -253,10 +253,16 @@ class Scrapper:
                         ['workplace', self.get_clean_number(lines[three_ent_2[1][1]])],
                         ['residential', self.get_clean_number(lines[three_ent_2[1][2]])],
                     ]
-                node = [
-                    [self.get_clean_location_name(lines[cities[0]]), node1],
-                    [self.get_clean_location_name(lines[cities[1]]), node2],
-                ]
+                node = []
+                for l in node1:
+                    # TODO - find a better way to do this.
+                    l.extend([self.get_clean_location_name(lines[cities[0]])])
+                    node.extend([l])
+
+                for l in node2:
+                    # TODO - find a better way to do this.
+                    l.extend([self.get_clean_location_name(lines[cities[1]])])
+                    node.extend([l])
             except Exception as e:
                 self.logger.warning(f'Page number {n} is corrupt, skipping..')
                 self.logger.warning(e)
@@ -265,7 +271,10 @@ class Scrapper:
                 print(node1, node2, lines[three_ent_2[0][0]], lines[three_ent_2[1][0]])
             self.logger.info(f'Collected data from Page number {n}')
             nodes.extend(node)
-        print(nodes)
+        df = pd.DataFrame(data=nodes, columns=['entity', 'value', 'location'])
+        df['region'], df['date'], df['country'] = self.get_date_region_cname(url)
+        print(df.head())
+        return df
 
     def get_regional_data(self, url):
         self.scrape_content(url)
