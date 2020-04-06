@@ -34,9 +34,12 @@ class Scrapper:
 
     def start_clean(self):
         try:
-            shutil.rmtree(self.path)
+            if os.path.exists(self.path):
+                shutil.rmtree(self.path)
             os.mkdir(self.path)
-            shutil.rmtree(self.output)
+
+            if os.path.exists(self.output):
+                shutil.rmtree(self.output)
             os.mkdir(self.output)
         except OSError as e:
             print("Error: %s : %s" % (self.path, e.strerror))
