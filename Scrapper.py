@@ -220,13 +220,14 @@ class Scrapper:
             ['retail_recr', self.get_clean_number(lines[13])],
             ['grocery_pharm', self.get_clean_number(lines[16])],
             ['parks', self.get_clean_number(lines[19])],
-            ['workplace', self.get_clean_number(lines[22])],
-            ['residential', self.get_clean_number(lines[25])]
+            ['transit', self.get_clean_number(lines[56])],
+            ['workplace', self.get_clean_number(lines[59])],
+            ['residential', self.get_clean_number(lines[62])]
         ]
         df = pd.DataFrame(data=data, columns=['entity', 'value'])
         df['region'], df['date'], df['country'] = self.get_date_region_cname(url)
         df['location'] = "REGION OVERALL"
-        print(df.head())
+        return df
 
 
 Scrapper().get_regional_data("https://www.gstatic.com/covid19/mobility/2020-03-29_US_Alabama_Mobility_Report_en.pdf")
