@@ -56,7 +56,7 @@ for url in region_list['url']:
     # region_list["locality data"] = region_list.url.apply(sc.get_sub_regional_data)
     regional_sub_data = regional_sub_data.append(sub_region_data)
     all_data = region_data.append(sub_region_data)
-    sc.store_output(all_data, f"{:qregion_data['region'][0]}_all_region_data_{today}.csv")
+    sc.store_output(all_data, f"{region_data['region'][0]}_all_region_data_{today}.csv")
 
 # sc.store_output(region_list,"all_data.csv")
 sc.store_output(regional_data, f'all_region_all_data_{today}.csv')
