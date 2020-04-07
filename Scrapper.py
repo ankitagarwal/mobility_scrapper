@@ -46,7 +46,7 @@ class Scrapper:
             os.mkdir(self.output)
             self.log(f'Created folder {self.output}')
         except OSError as e:
-            print("Error: %s : %s" % (self.path, e.strerror))
+            self.logger.exception("Error: %s : %s" % (self.path, e.strerror))
 
     def get_local_file(self, file, path=None):
         if path is None:
@@ -195,11 +195,11 @@ class Scrapper:
         df['country'] = df.url.apply(self.get_country_code_from_url)
         df['region'] = df.url.apply(self.get_region_code_from_url)
         df['date'] = df.url.apply(self.get_date_code_from_url)
-        self.logger.info('Finished getting country list. Found {} regions.'.format(len(df)))
+        self.logger.info('Finished getting regions list. Found {} regions.'.format(len(df)))
         return df
 
     def get_national_data(self, url):
-        self.logger.info(f'Getting natinal data for {url}')
+        self.logger.info(f'Getting national data for {url}')
         self.scrape_content(url)
         lines = self.parsedocument(self.open_file(self.url_to_file(url)), 0, 1)
         data = [
@@ -286,7 +286,7 @@ class Scrapper:
 
     def get_regional_data(self, url):
         self.scrape_content(url)
-        lines = self.parsedocument(self.open_file(self.url_to_file(url)))
+        lines = self.parsedocument(self.open_file(self.url_to_file(url)), 0, 1)
         data = [
             ['retail_recr', self.get_clean_number(lines[13])],
             ['grocery_pharm', self.get_clean_number(lines[16])],
@@ -308,7 +308,6 @@ class Scrapper:
         return result
 
     def get_enity(self, entity):
-
         entity_dict = {"Retail & recreation": "retail_recr",
                        "Grocery & pharmacy": "grocery_pharm",
                        "Parks": "parks",
@@ -320,48 +319,50 @@ class Scrapper:
 
     def clean_data_list(self, data_list):
         result_list = []
-        for data in data_list:
-            data[1] = self.get_enity(data[1])
-            data[2] = self.get_clean_number(data[2])
-            result_list.append(data)
+        try:
+            for data in data_list:
+                data[1] = self.get_enity(data[1])
+                data[2] = self.get_clean_number(data[2])
+                result_list.append(data)
+        except:
+            self.logger.warning(f"Skipping location {data[0]} as the data is corrupt")
         return result_list
 
-    def get_sub_regional_code(self, url):
-        global first_index, second_index
-        self.logger.info("getting sub_regiona;")
+    def get_sub_regional_data(self, url):
+        self.logger.info("getting sub_region;")
         self.scrape_content(url)
-
-        lines = self.parsedocument(self.open_file(self.url_to_file(url)), 2, -2, True)
-        # main_df = pd.DataFrame(data=[], columns=['location', 'entity', 'value', 'date', 'country','region'])
-        nodes = []
+        lines = self.parsedocument(self.open_file(self.url_to_file(url)), 2, -1, True)
+        main_df = pd.DataFrame()
         for line in lines.keys():
-            data_list = []
-            first_index = [index for index, value in enumerate(lines[line]) if value.strip() == "Retail & recreation"]
-            second_index = [index for index, value in enumerate(lines[line]) if value.strip() == "Transit stations"]
-            for i in range(0, len(first_index)):
-                first_set = lines[line][first_index[i]:first_index[i] + 9]
-                first_set = self.remove_astric(first_set)
-                location = lines[line][first_index[i] - 1]
-                for j in range(0, 3):
-                    data_list.append([location, first_set[j], first_set[j + 3]])
+            try:
+                data_list = []
+                first_index = [index for index, value in enumerate(lines[line]) if value.strip() == "Retail & recreation"]
+                second_index = [index for index, value in enumerate(lines[line]) if value.strip() == "Transit stations"]
 
-                second_set = lines[line][second_index[i]:second_index[i] + 9]
-                second_set = self.remove_astric(second_set)
-                for k in range(0, 3):
-                    data_list.append([location, second_set[k], second_set[k + 3]])
-            data_list = self.clean_data_list(data_list)
-            df = pd.DataFrame(data=data_list, columns=['location', 'entity', 'value'])
-            df['date'] = self.get_date_code_from_url(url)
-            df['country'] = self.get_country_code_from_url(url)
-            df['region'] = self.get_region_code_from_url(url)
-            print(df)
-            nodes.append(data_list)
-        # return main_df
+                for i in range(0, len(first_index)):
+                    location = lines[line][first_index[i] - 1]
+                    first_set = lines[line][first_index[i]:first_index[i] + 9]
+                    first_set = self.remove_astric(first_set)
+                    for j in range(0, 3):
+                        data_list.append([location, first_set[j], first_set[j + 3]])
+
+                    second_set = lines[line][second_index[i]:second_index[i] + 9]
+                    second_set = self.remove_astric(second_set)
+                    for k in range(0, 3):
+                        data_list.append([location, second_set[k], second_set[k + 3]])
+                data_list = self.clean_data_list(data_list)
+                df = pd.DataFrame(data=data_list, columns=['location', 'entity', 'value'])
+                df['date'] = self.get_date_code_from_url(url)
+                df['country'] = self.get_country_code_from_url(url)
+                df['region'] = self.get_region_code_from_url(url)
+                main_df = main_df.append(df, ignore_index=True)
+            except Exception as e:
+                self.logger.error(f"Skiping region { url } as the data is currupt")
+        return main_df
 
 
-# Scrapper().get_sub_regional_code(
-#     "https://www.gstatic.com/covid19/mobility/2020-03-29_US_Alabama_Mobility_Report_en.pdf")
-
+#
+# print(Scrapper().get_sub_regional_data("https://www.gstatic.com/covid19/mobility/2020-03-29_US_District_of_Columbia_Mobility_Report_en.pdf"))
 # Scrapper().get_county_list()
 # Scrapper().get_national_data('https://www.gstatic.com/covid19/mobility/2020-03-29_AF_Mobility_Report_en.pdf')
 # Scrapper().get_sub_national_data('https://www.gstatic.com/covid19/mobility/2020-03-29_GB_Mobility_Report_en.pdf')
