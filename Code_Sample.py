@@ -42,6 +42,7 @@ for idx, row in countries.iterrows():
 file = f'all_countries_all_data_{today}.csv'
 sc.store_output(all_countries_data, file)
 
+# ------------------------Collecting Region Data ------------------------------------
 region_list = sc.get_region_list()
 sc.store_output(region_list, "region_list.csv")
 regional_data = pd.DataFrame()

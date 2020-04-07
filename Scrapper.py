@@ -277,10 +277,7 @@ class Scrapper:
                 self.logger.warning(e)
                 print(len(lines), cities, three_ent_1, three_ent_2)
                 print(lines)
-<<<<<<< HEAD
                 print(node)
-=======
->>>>>>> Added Data to write into csv file
             self.logger.info(f'Collected data from Page number {n}')
         df = pd.DataFrame(data=nodes, columns=['entity', 'value', 'location'])
         df['country'], df['date'], df['country_name'] = self.get_date_country_cname(url)
@@ -337,34 +334,6 @@ class Scrapper:
         lines = self.parsedocument(self.open_file(self.url_to_file(url)), 2, -1, True)
         main_df = pd.DataFrame()
         for line in lines.keys():
-<<<<<<< HEAD
-            data_list = []
-            first_index = [index for index, value in enumerate(lines[line]) if value.strip() == "Retail & recreation"]
-            second_index = [index for index, value in enumerate(lines[line]) if value.strip() == "Transit stations"]
-            for i in range(0, len(first_index)):
-                first_set = lines[line][first_index[i]:first_index[i] + 9]
-                first_set = self.remove_astric(first_set)
-                location = lines[line][first_index[i] - 1]
-                for j in range(0, 3):
-                    data_list.append([location, first_set[j], first_set[j + 3]])
-
-                second_set = lines[line][second_index[i]:second_index[i] + 9]
-                second_set = self.remove_astric(second_set)
-                for k in range(0, 3):
-                    data_list.append([location, second_set[k], second_set[k + 3]])
-            data_list = self.clean_data_list(data_list)
-            df = pd.DataFrame(data=data_list, columns=['location', 'entity', 'value'])
-            df['date'] = self.get_date_code_from_url(url)
-            df['country'] = self.get_country_code_from_url(url)
-            df['region'] = self.get_region_code_from_url(url)
-            print(df)
-            nodes.append(data_list)
-        # return main_df
-
-
-# Scrapper().get_sub_regional_code(
-#     "https://www.gstatic.com/covid19/mobility/2020-03-29_US_Alabama_Mobility_Report_en.pdf")
-=======
             try:
                 data_list = []
                 first_index = [index for index, value in enumerate(lines[line]) if value.strip() == "Retail & recreation"]
@@ -394,8 +363,6 @@ class Scrapper:
 
 #
 # print(Scrapper().get_sub_regional_data("https://www.gstatic.com/covid19/mobility/2020-03-29_US_District_of_Columbia_Mobility_Report_en.pdf"))
->>>>>>> Added Data to write into csv file
-
 # Scrapper().get_county_list()
 # Scrapper().get_national_data('https://www.gstatic.com/covid19/mobility/2020-03-29_AF_Mobility_Report_en.pdf')
 # Scrapper().get_sub_national_data('https://www.gstatic.com/covid19/mobility/2020-03-29_GB_Mobility_Report_en.pdf')
