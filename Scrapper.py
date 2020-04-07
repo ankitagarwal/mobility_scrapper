@@ -7,6 +7,9 @@ import re
 import urllib.request
 from bs4 import BeautifulSoup
 import shutil
+from datetime import date
+
+today = date.today()
 
 from pdfminer.layout import LAParams
 from pdfminer.converter import PDFPageAggregator
@@ -298,6 +301,7 @@ class Scrapper:
         df = pd.DataFrame(data=data, columns=['entity', 'value'])
         df['region'], df['date'], df['country'] = self.get_date_region_cname(url)
         df['location'] = "REGION OVERALL"
+        self.store_output(df, f"{self.get_region_code_from_url(url)}__region_data_{today}.csv")
         return df
 
     def remove_astric(self, data_set):
@@ -314,18 +318,42 @@ class Scrapper:
                        "Transit stations": "transit",
                        "Workplace": "workplace",
                        "Residential": "residential"}
-        if entity.strip(" ") in entity_dict.keys():
+        if entity and entity.strip(" ") in entity_dict.keys():
             return entity_dict[entity.strip(" ")]
+
+    @staticmethod
+    def swap(a, b, i, j):
+        temp_b = b[j]
+        b[j] = a[i]
+        a[i] = temp_b
+        return a, b
+
+    def clean_corrupt_data(self, first_set, second_set):
+        result_data = []
+        data1, data2 = self.swap(first_set, second_set, 2, 1)
+        # data1[1] = self.get_enity(data1[1])
+        # data2[1] = self.get_enity(data2[1])
+        data1[2] = self.get_clean_number(data1[2])
+        data2[2] = self.get_clean_number(data2[2])
+        if data1[1]:
+            result_data.append(data1)
+        if data2[1]:
+            result_data.append(data2)
+        return result_data
 
     def clean_data_list(self, data_list):
         result_list = []
-        try:
-            for data in data_list:
-                data[1] = self.get_enity(data[1])
+        for data in data_list:
+            try:
                 data[2] = self.get_clean_number(data[2])
-                result_list.append(data)
-        except:
-            self.logger.warning(f"Skipping location {data[0]} as the data is corrupt")
+                data[1] = self.get_enity(data[1])
+                if data[1] and data not in result_list:
+                    result_list.append(data)
+            except Exception as e:
+                corrupt_index = data_list.index(data)
+                data = self.clean_corrupt_data(data_list[corrupt_index], data_list[corrupt_index + 1])
+                result_list.extend(data)
+                data_list.pop(corrupt_index)
         return result_list
 
     def get_sub_regional_data(self, url):
@@ -336,10 +364,12 @@ class Scrapper:
         for line in lines.keys():
             try:
                 data_list = []
-                first_index = [index for index, value in enumerate(lines[line]) if value.strip() == "Retail & recreation"]
+                first_index = [index for index, value in enumerate(lines[line]) if
+                               value.strip() == "Retail & recreation"]
                 second_index = [index for index, value in enumerate(lines[line]) if value.strip() == "Transit stations"]
 
                 for i in range(0, len(first_index)):
+
                     location = lines[line][first_index[i] - 1]
                     first_set = lines[line][first_index[i]:first_index[i] + 9]
                     first_set = self.remove_astric(first_set)
@@ -357,12 +387,15 @@ class Scrapper:
                 df['region'] = self.get_region_code_from_url(url)
                 main_df = main_df.append(df, ignore_index=True)
             except Exception as e:
-                self.logger.error(f"Skiping region { url } as the data is currupt")
+                self.logger.exception(f"Skiping region {url} as the data is currupt due to {e}")
+        self.store_output(main_df, f"{self.get_region_code_from_url(url)}_sub_region_data.csv")
+        self.logger.info(f"Data writtern into {self.get_region_code_from_url(url)}_sub_region_data_{today}.csv")
         return main_df
 
 
-#
-# print(Scrapper().get_sub_regional_data("https://www.gstatic.com/covid19/mobility/2020-03-29_US_District_of_Columbia_Mobility_Report_en.pdf"))
+
+# print(Scrapper().get_sub_regional_data(
+    # "https://www.gstatic.com/covid19/mobility/2020-03-29_US_Michigan_Mobility_Report_en.pdf"))
 # Scrapper().get_county_list()
 # Scrapper().get_national_data('https://www.gstatic.com/covid19/mobility/2020-03-29_AF_Mobility_Report_en.pdf')
 # Scrapper().get_sub_national_data('https://www.gstatic.com/covid19/mobility/2020-03-29_GB_Mobility_Report_en.pdf')

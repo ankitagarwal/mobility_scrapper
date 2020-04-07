@@ -47,19 +47,19 @@ region_list = sc.get_region_list()
 sc.store_output(region_list, "region_list.csv")
 regional_data = pd.DataFrame()
 regional_sub_data = pd.DataFrame()
-
+# region_list={'url':["https://www.gstatic.com/covid19/mobility/2020-03-29_US_Michigan_Mobility_Report_en.pdf"]}
 for url in region_list['url']:
     region_data = sc.get_regional_data(url)
+    # region_list["overall data"] = region_list.url.apply(sc.get_regional_data)
     regional_data = regional_data.append(region_data)
-    sc.store_output(region_data, f"{region_data['region'][0]}_region_data_{today}.csv")
-
     sub_region_data = sc.get_sub_regional_data(url)
+    # region_list["locality data"] = region_list.url.apply(sc.get_sub_regional_data)
     regional_sub_data = regional_sub_data.append(sub_region_data)
-    if not sub_region_data.empty:
-        sc.store_output(sub_region_data, f"{sub_region_data['region'][0]}_sub_region_data_{today}.csv")
-        all_data = region_data.append(sub_region_data)
-        sc.store_output(all_data, f"{sub_region_data['region'][0]}_all_region_data_{today}.csv")
+    all_data = region_data.append(sub_region_data)
+    sc.store_output(all_data, f"{sub_region_data['region'][0]}_all_region_data_{today}.csv")
 
+# sc.store_output(region_list,"all_data.csv")
 sc.store_output(regional_data, f'all_region_all_data_{today}.csv')
 sc.store_output(regional_sub_data, f'all_region_all_sub_data_{today}.csv')
+
 
