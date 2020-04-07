@@ -359,7 +359,7 @@ class Scrapper:
     def get_sub_regional_data(self, url):
         self.logger.info("getting sub_region;")
         self.scrape_content(url)
-        lines = self.parsedocument(self.open_file(self.url_to_file(url)), 2, -1, True)
+        lines = self.parsedocument(self.open_file(self.url_to_file(url)), 2, -2, True)
         main_df = pd.DataFrame()
         for line in lines.keys():
             try:
